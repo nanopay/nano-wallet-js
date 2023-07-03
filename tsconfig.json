@@ -6,6 +6,9 @@
     "esModuleInterop": true,
     "strict": true,
     "lib": ["esnext", "DOM"],
+    "paths": {
+			"@/*": ["./src/*"]
+		}
   },
   "include": ["src"]
 }
