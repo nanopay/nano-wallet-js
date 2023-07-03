@@ -23,6 +23,9 @@ pids
 node_modules/
 jspm_packages/
 
+# Coverage directory used by tools like istanbul
+coverage
+
 # TypeScript cache
 *.tsbuildinfo
 
