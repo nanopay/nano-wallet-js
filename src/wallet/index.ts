@@ -1,2 +1,2 @@
-export { default } from './WalletController'
-export * from './WalletController'
+export { default } from './WalletController';
+export * from './WalletController';

@@ -1,1 +1,1 @@
-export { default } from './RpcController'
+export { default } from './RpcController';

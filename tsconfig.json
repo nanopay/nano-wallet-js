@@ -1,14 +1,14 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "strict": true,
-    "lib": ["esnext", "DOM"],
-    "paths": {
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "node",
+		"esModuleInterop": true,
+		"strict": true,
+		"lib": ["esnext", "DOM"],
+		"paths": {
 			"@/*": ["./src/*"]
 		}
-  },
-  "include": ["src"]
+	},
+	"include": ["src"]
 }
