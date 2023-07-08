@@ -176,7 +176,7 @@ export default class NanoWallet extends BaseController<
 		return { hash };
 	}
 
-	async sendAll(to: string) {
+	async sweep(to: string) {
 		if (this.state.frontier === null) {
 			throw new Error('No frontier');
 		}
