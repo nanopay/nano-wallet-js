@@ -176,6 +176,38 @@ export default class NanoWallet extends BaseController<
 		return { hash };
 	}
 
+	async send(to: string, amount: string) {
+		if (this.state.frontier === null) {
+			throw new Error('No frontier');
+		}
+
+		const { block, hash } = createBlock(this.config.privateKey, {
+			previous: this.state.frontier,
+			representative: this.config.representative,
+			balance: BigNumber(this.state.balance).minus(amount).toString(),
+			link: to,
+			work: null,
+		});
+
+		const work = await this.workGenerate(this.state.frontier, SEND_DIFFICULTY);
+
+		const processed = await this.rpc.process({
+			...block,
+			work,
+		});
+
+		if (processed.hash !== hash) {
+			throw new Error('Block hash mismatch');
+		}
+
+		await this.update({
+			balance: '0',
+			frontier: hash,
+		});
+
+		return { hash };
+	}
+
 	async sweep(to: string) {
 		if (this.state.frontier === null) {
 			throw new Error('No frontier');
