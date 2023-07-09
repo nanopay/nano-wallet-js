@@ -88,21 +88,7 @@ export default class NanoWallet extends BaseController<
 				throw error;
 			}
 		}
-		const { blocks = {} } = await this.rpc.receivable(this.account, {
-			threshold: this.config.minAmountRaw,
-		});
-		let receivableBlocks: ReceivableBlock[] = [];
-		let receivable = '0';
-		for (const blockHash in blocks) {
-			receivableBlocks.push({
-				blockHash,
-				amount: blocks[blockHash],
-			});
-			receivable = TunedBigNumber(receivable)
-				.plus(blocks[blockHash])
-				.toString();
-		}
-		await this.update({ receivableBlocks, receivable });
+		await this.getReceivable();
 	}
 
 	async workGenerate(hash: string, threshold: string) {
@@ -123,6 +109,25 @@ export default class NanoWallet extends BaseController<
 		}
 
 		return work;
+	}
+
+	async getReceivable() {
+		const { blocks = {} } = await this.rpc.receivable(this.account, {
+			threshold: this.config.minAmountRaw,
+		});
+		let receivableBlocks: ReceivableBlock[] = [];
+		let receivable = '0';
+		for (const blockHash in blocks) {
+			receivableBlocks.push({
+				blockHash,
+				amount: blocks[blockHash],
+			});
+			receivable = TunedBigNumber(receivable)
+				.plus(blocks[blockHash])
+				.toString();
+		}
+		await this.update({ receivableBlocks, receivable });
+		return { receivableBlocks, receivable };
 	}
 
 	async receive(link: string) {
