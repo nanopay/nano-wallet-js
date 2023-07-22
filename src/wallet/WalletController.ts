@@ -15,11 +15,7 @@ import {
 } from '@/Constants';
 import BigNumber from 'bignumber.js';
 import BaseController from '@/BaseController';
-
-const TunedBigNumber = BigNumber.clone({
-	EXPONENTIAL_AT: 1e9,
-	DECIMAL_PLACES: 36,
-});
+import { TunedBigNumber } from '@/utils';
 
 export interface NanoWalletConfig extends NanoRpcConfig {
 	privateKey: string;
@@ -189,7 +185,7 @@ export default class NanoWallet extends BaseController<
 		const { block, hash } = createBlock(this.config.privateKey, {
 			previous: this.state.frontier,
 			representative: this.config.representative,
-			balance: BigNumber(this.state.balance).minus(amount).toString(),
+			balance: TunedBigNumber(this.state.balance).minus(amount).toString(),
 			link: to,
 			work: null,
 		});
