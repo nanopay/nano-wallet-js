@@ -40,6 +40,10 @@ const importTestSeed = () => {
 };
 
 const createTestSeed = async () => {
+	if (!fs.existsSync(resolve('/data/tests'))) {
+		fs.mkdirSync(resolve('/data/tests'), { recursive: true });
+	}
+
 	const seed = await generateSeed();
 	fs.writeFileSync(filePath, JSON.stringify({ seed }, null, 2));
 	return seed;

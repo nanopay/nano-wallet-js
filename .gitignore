@@ -10,6 +10,9 @@ lerna-debug.log*
 # Auto-generated build
 build/
 
+# Data test files
+data/
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
