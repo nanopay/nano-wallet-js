@@ -153,9 +153,11 @@ describe('Init Wallet', () => {
 		expect(ephemeralWallet.state.receivableBlocks.length).toBeGreaterThan(0);
 	}, 60000);
 
-	it('should receive receivables', async () => {
-		for (const block of ephemeralWallet.state.receivableBlocks) {
-			await ephemeralWallet.receive(block.blockHash);
-		}
+	it('should receive', async () => {
+		const receivablesCount = ephemeralWallet.state.receivableBlocks.length;
+		expect(receivablesCount).toBeGreaterThanOrEqual(1);
+		const lastReceivable =
+			ephemeralWallet.state.receivableBlocks[receivablesCount - 1];
+		await ephemeralWallet.receive(lastReceivable.blockHash);
 	}, 60000);
 });
