@@ -148,6 +148,7 @@ describe('Init Wallet', () => {
 		for (let i = 0; receivable === '0' && i < 10; i++) {
 			const response = await ephemeralWallet.getReceivable();
 			receivable = response.receivable;
+			await new Promise(res => setTimeout(res, 1000));
 		}
 		expect(ephemeralWallet.state.receivableBlocks.length).toBeGreaterThan(0);
 	}, 60000);
