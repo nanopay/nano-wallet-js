@@ -6,11 +6,15 @@ import {
 	ReceivableWithThreshold,
 } from './RpControllerc.types';
 import { DEFAULT_TIMEOUT } from '@/Constants';
+import Logger from '../logger';
+
+const LOG_REQUEST_RESPONSE = false;
 
 export interface NanoRpcConfig {
 	rpcUrls: string | string[];
 	workerUrls: string | string[];
 	timeout?: number;
+	debug?: boolean;
 }
 
 interface WorkGenerateResponse {
@@ -28,11 +32,13 @@ export default class NanoRPC {
 	rpcUrls: string[];
 	workerUrls: string[];
 	timeout: number;
+	private logger: Logger;
 
 	constructor({
 		rpcUrls,
 		workerUrls,
 		timeout = DEFAULT_TIMEOUT,
+		debug = false,
 	}: NanoRpcConfig) {
 		this.rpcUrls = rpcUrls instanceof Array ? rpcUrls : [rpcUrls];
 		if (this.rpcUrls.length < 0) {
@@ -57,6 +63,7 @@ export default class NanoRPC {
 			}
 		});
 		this.timeout = timeout;
+		this.logger = new Logger('NANO_RPC', debug);
 	}
 
 	async postRPC<TRPCResponse = unknown>(
@@ -65,6 +72,7 @@ export default class NanoRPC {
 		retry = 0,
 	): Promise<TRPCResponse> {
 		const url = urls[retry];
+		const startedAt = Date.now();
 		try {
 			const response = await fetchWithTimeout(url, {
 				method: 'POST',
@@ -75,29 +83,71 @@ export default class NanoRPC {
 				timeout: this.timeout,
 			});
 
-			if (!response.ok) {
-				console.error(
-					`RPC Error - Bad Status: ${response.status} ${response.statusText}`,
+			const took = Date.now() - startedAt;
+
+			if (!response?.ok) {
+				this.logger.error(
+					`url: ${url} | action: ${data.action} | status: ${response.status} (${response.statusText}) | took: ${took}ms`,
+					LOG_REQUEST_RESPONSE
+						? `\n\t- Request: ${JSON.stringify(
+								data,
+						  )}\n\t- Response: ${JSON.stringify(await response.text())}`
+						: '',
 				);
-				throw new Error('bad status');
+				throw new Error('bad status in response');
 			}
 
-			const body = await response.json();
+			let body;
+
+			// clone, so we can consume the body if response.json() fails
+			const responseClone = response.clone();
+
+			try {
+				body = await response.json();
+			} catch (err) {
+				this.logger.error(
+					`url: ${url} | action: ${data.action} | status: bad json in response | took: ${took}ms`,
+					LOG_REQUEST_RESPONSE
+						? `\n\t- Request: ${JSON.stringify(
+								data,
+						  )}\n\t- Response: ${await responseClone.clone().text()}`
+						: '',
+				);
+				throw new Error('bad json in response');
+			}
 
 			if (typeof body === 'object' && 'error' in body) {
-				console.error(`RPC Error: ${body.error}`);
 				throw new Error(body.error);
 			}
+
+			this.logger.info(
+				`url: ${url} | action: ${data.action} | status: ${response.status} | took: ${took}ms`,
+				LOG_REQUEST_RESPONSE
+					? `\n\t- Request: ${JSON.stringify(
+							data,
+					  )}\n\t- Response: ${JSON.stringify(body)}`
+					: '',
+			);
 
 			return body as TRPCResponse;
 		} catch (error: any) {
 			const isRetryableError =
-				(error instanceof SyntaxError &&
-					error.message.startsWith('SyntaxError')) ||
-				(error instanceof DOMException && error.name === 'AbortError') ||
-				error.message === 'bad status';
+				error instanceof DOMException &&
+				(error.name === 'AbortError' ||
+					error.message === 'bad status in response' ||
+					error.message === 'bad json in response');
 
-			if (isRetryableError && retry < urls.length - 1) {
+			const canRetry = isRetryableError && retry < urls.length - 1;
+
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				const took = Date.now() - startedAt;
+				this.logger.error(
+					`url: ${url} | action: ${data.action} | status: ${error.message} | took: ${took}ms | will retry: ${canRetry}`,
+					LOG_REQUEST_RESPONSE ? `\n\t- Request: ${JSON.stringify(data)}` : '',
+				);
+			}
+
+			if (canRetry) {
 				return await this.postRPC(data, urls, retry + 1);
 			}
 
