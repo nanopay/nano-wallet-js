@@ -13,7 +13,6 @@ import {
 	RECEIVE_DIFFICULTY,
 	SEND_DIFFICULTY,
 } from '@/Constants';
-import BigNumber from 'bignumber.js';
 import BaseController from '@/BaseController';
 import { TunedBigNumber } from '@/utils';
 
@@ -33,6 +32,7 @@ export interface NanoWalletState {
 	receivable: string;
 	receivableBlocks: ReceivableBlock[];
 	frontier: string | null;
+	representative: string | null;
 }
 
 export default class NanoWallet extends BaseController<
@@ -60,6 +60,7 @@ export default class NanoWallet extends BaseController<
 		receivable: '0',
 		receivableBlocks: [],
 		frontier: null,
+		representative: null,
 	};
 
 	constructor(config: NanoWalletConfig, state?: NanoWalletState | null) {
@@ -76,9 +77,9 @@ export default class NanoWallet extends BaseController<
 
 	async sync() {
 		try {
-			const data = await this.rpc.accountInfo(this.account);
-			const { balance, frontier, receivable } = data;
-			await this.update({ balance, frontier, receivable });
+			const { balance, frontier, receivable, representative } =
+				await this.rpc.accountInfo(this.account);
+			await this.update({ balance, frontier, receivable, representative });
 		} catch (error: any) {
 			if (error.message !== 'Account not found') {
 				throw error;
@@ -236,6 +237,45 @@ export default class NanoWallet extends BaseController<
 		await this.update({
 			balance: '0',
 			frontier: hash,
+		});
+
+		return { hash };
+	}
+
+	async setRepresentative(account?: string) {
+		if (this.state.frontier === null) {
+			throw new Error('No frontier');
+		}
+
+		const representative = account || this.config.representative;
+
+		const { block, hash } = createBlock(this.config.privateKey, {
+			previous: this.state.frontier,
+			representative,
+			balance: this.state.balance,
+			link: null,
+			work: null,
+		});
+
+		const work = await this.workGenerate(this.state.frontier, SEND_DIFFICULTY);
+
+		const processed = await this.rpc.process({
+			...block,
+			work,
+		});
+
+		if (processed.hash !== hash) {
+			throw new Error('Block hash mismatch');
+		}
+
+		await this.update({
+			balance: '0',
+			frontier: hash,
+			representative,
+		});
+
+		this.configure({
+			representative,
 		});
 
 		return { hash };
