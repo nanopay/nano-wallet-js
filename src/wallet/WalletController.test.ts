@@ -103,7 +103,7 @@ describe('Init Wallet', () => {
 			);
 			console.info(`Send 0.0001 to ${masterWallet.account}`);
 			for (let count = 1; masterWallet.state.receivable === '0'; count++) {
-				//process.stdout.write('.'.padEnd(count, '.'));
+				process.stdout.write('.'.padEnd(count, '.'));
 				await masterWallet.getReceivable();
 				await new Promise(res => setTimeout(res, 2000));
 			}
@@ -118,7 +118,6 @@ describe('Init Wallet', () => {
 		const seed = await generateSeed();
 
 		const privateKey = deriveSecretKey(seed, 0);
-		// const address = deriveAddress(privateKey);
 
 		ephemeralWallet = new NanoWallet(
 			{
