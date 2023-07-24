@@ -3,7 +3,9 @@ import { fetchWithTimeout } from '@/utils';
 import {
 	AccountBalanceResponse,
 	AccountInfoResponse,
-	ReceivableWithThreshold,
+	ProcessResponse,
+	ReceivableWithThresholdResponse,
+	WorkGenerateResponse,
 } from './RpControllerc.types';
 import { DEFAULT_TIMEOUT } from '@/Constants';
 import Logger from '../logger';
@@ -15,17 +17,6 @@ export interface NanoRpcConfig {
 	workerUrls: string | string[];
 	timeout?: number;
 	debug?: boolean;
-}
-
-interface WorkGenerateResponse {
-	work: string;
-	difficulty: string;
-	multiplier: string;
-	hash: string;
-}
-
-interface ProcessResponse {
-	hash: string;
 }
 
 export default class NanoRPC {
@@ -200,6 +191,6 @@ export default class NanoRPC {
 			count,
 			threshold,
 		};
-		return this.postRPC<ReceivableWithThreshold>(data);
+		return this.postRPC<ReceivableWithThresholdResponse>(data);
 	}
 }

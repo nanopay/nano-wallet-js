@@ -39,6 +39,17 @@ export interface AccountBalanceResponse {
 	receivable: string;
 }
 
-export interface ReceivableWithThreshold {
+export interface ReceivableWithThresholdResponse {
 	blocks: Record<string, string>;
+}
+
+export interface WorkGenerateResponse {
+	work: string;
+	difficulty: string;
+	multiplier: string;
+	hash: string;
+}
+
+export interface ProcessResponse {
+	hash: string;
 }
