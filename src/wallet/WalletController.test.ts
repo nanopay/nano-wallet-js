@@ -159,4 +159,12 @@ describe('Init Wallet', () => {
 			ephemeralWallet.state.receivableBlocks[receivablesCount - 1];
 		await ephemeralWallet.receive(lastReceivable.blockHash);
 	}, 60000);
+
+	it('should set representative', async () => {
+		const representative = masterWallet.account;
+		const { hash } = await ephemeralWallet.setRepresentative(representative);
+		expect(checkHash(hash)).toBeTruthy();
+		expect(ephemeralWallet.config.representative).toBe(representative);
+		expect(ephemeralWallet.state.representative).toBe(representative);
+	}, 60000);
 });
