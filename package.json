@@ -11,13 +11,13 @@
 	"author": "anarkrypto <anarkrypto@gmail.com>",
 	"homepage": "https://github.com/nanopay/nano-wallet-js/tree/main/#readme",
 	"license": "MIT",
-	"main": "build/cjs/index.js",
-	"module": "build/esm/index.js",
-	"types": "build/types/index.d.ts",
+	"main": "dist/cjs/index.js",
+	"module": "dist/esm/index.js",
+	"types": "dist/types/index.d.ts",
 	"scripts": {
 		"test": "jest",
 		"compile": "tsc -b ./tsconfig.cjs.json ./tsconfig.esm.json ./tsconfig.types.json && tsc-alias -p ./tsconfig.cjs.json && tsc-alias -p ./tsconfig.esm.json && tsc-alias -p ./tsconfig.types.json",
-		"build:clean": "rm -rf ./build",
+		"build:clean": "rm -rf ./dist",
 		"build": "npm-run-all build:clean compile && node ./scripts/prepare-package-json",
 		"format": "prettier --config .prettierrc.json --write ."
 	},
@@ -48,7 +48,7 @@
 		"typescript": "^5.1.6"
 	},
 	"files": [
-		"build",
+		"dist",
 		"src",
 		"!**/*.test.ts"
 	]

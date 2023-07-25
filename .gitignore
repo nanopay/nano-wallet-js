@@ -7,8 +7,8 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
-# Auto-generated build
-build/
+# Generated build
+dist/
 
 # Data test files
 data/tests

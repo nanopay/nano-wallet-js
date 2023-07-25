@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const buildDir = './build';
+const buildDir = './dist';
 function createEsmModulePackageJson() {
 	fs.readdir(buildDir, function (err, dirs) {
 		if (err) {
