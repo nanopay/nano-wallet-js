@@ -183,10 +183,12 @@ export default class NanoWallet extends BaseController<
 			throw new Error('No frontier');
 		}
 
+		const balance = TunedBigNumber(this.state.balance).minus(amount).toString();
+
 		const { block, hash } = createBlock(this.config.privateKey, {
 			previous: this.state.frontier,
 			representative: this.config.representative,
-			balance: TunedBigNumber(this.state.balance).minus(amount).toString(),
+			balance,
 			link: to,
 			work: null,
 		});
@@ -203,7 +205,7 @@ export default class NanoWallet extends BaseController<
 		}
 
 		await this.update({
-			balance: '0',
+			balance,
 			frontier: hash,
 		});
 
