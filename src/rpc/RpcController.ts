@@ -107,8 +107,12 @@ export default class NanoRPC {
 				throw new Error('bad json in response');
 			}
 
-			if (typeof body === 'object' && 'error' in body) {
-				throw new Error(body.error);
+			if (typeof body === 'object' && body !== null && 'error' in body) {
+				if (typeof body.error === 'string') {
+					throw new Error(body.error);
+				} else {
+					throw new Error(JSON.stringify(body.error));
+				}
 			}
 
 			this.logger.info(
