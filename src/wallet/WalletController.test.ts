@@ -17,12 +17,12 @@ import { MIN_AMOUNT } from '@/Constants';
 
 const DEFAULT_AMOUNT = process.env.AMOUNT || 0.00001;
 
-const RPC_URL = process.env.RPC_URL
-	? process.env.RPC_URL.split(',')
+const RPC_URL = process.env.RPC_URLS
+	? process.env.RPC_URLS.split(',')
 	: ['http://[::1]:7076'];
 
-const WORKER_URL = process.env.WORKER_URL
-	? process.env.WORKER_URL.split(',')
+const WORKER_URL = process.env.WORKER_URLS
+	? process.env.WORKER_URLS.split(',')
 	: ['http://[::1]:7076'];
 
 const filePath = resolve('/data/tests/wallet.json');
