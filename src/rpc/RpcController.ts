@@ -91,7 +91,7 @@ export default class NanoRPC {
 			let body;
 
 			// clone, so we can consume the body if response.json() fails
-			const responseClone = response.clone();
+			const responseClone = new Response(response.body, response);
 
 			try {
 				body = await response.json();
