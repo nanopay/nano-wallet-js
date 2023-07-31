@@ -23,7 +23,7 @@
 		"build:clean": "rimraf ./dist",
 		"build": "npm run build:clean && npm run compile && node ./scripts/prepare-package-json",
 		"format": "prettier --config .prettierrc.json --write .",
-		"release": "npm run build && npm run publish"
+		"release": "npm run build && npm publish"
 	},
 	"repository": {
 		"type": "git",
