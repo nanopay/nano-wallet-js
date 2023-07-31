@@ -19,7 +19,8 @@
 		"compile": "tsc -b ./tsconfig.cjs.json ./tsconfig.esm.json ./tsconfig.types.json && tsc-alias -p ./tsconfig.cjs.json && tsc-alias -p ./tsconfig.esm.json && tsc-alias -p ./tsconfig.types.json",
 		"build:clean": "rm -rf ./dist",
 		"build": "npm-run-all build:clean compile && node ./scripts/prepare-package-json",
-		"format": "prettier --config .prettierrc.json --write ."
+		"format": "prettier --config .prettierrc.json --write .",
+		"release": "npm run build && npm publish"
 	},
 	"repository": {
 		"type": "git",
