@@ -290,4 +290,19 @@ export default class NanoWallet extends BaseController<
 	get receivable() {
 		return this.state.receivable;
 	}
+
+	get receivableBlocks() {
+		return this.state.receivableBlocks;
+	}
+
+	get frontier() {
+		return this.state.frontier;
+	}
+
+	// Current representative may be different from the initialized representative
+	// if after initialization of instance there has not yet been a new transaction or
+	// .setRepresentative() has not been called yet.
+	get currentRepresentative() {
+		return this.state.representative;
+	}
 }
