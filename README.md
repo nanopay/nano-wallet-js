@@ -13,6 +13,12 @@ SDK for developers to create and interact with Nanocurrency wallets easily with 
 
 ## How to use it
 
+#### Install nano-wallet-js package
+
+```
+npm install nano-wallet-js
+```
+
 #### Init the Wallet instance and sync:
 
 ```js
