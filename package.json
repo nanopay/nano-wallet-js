@@ -20,7 +20,7 @@
 		"compile:cjs": "tsc -b ./tsconfig.cjs.json && tsc-alias -p ./tsconfig.cjs.json",
 		"compile:esm": "tsc -b ./tsconfig.esm.json && tsc-alias -p ./tsconfig.esm.json",
 		"compile:types": "tsc -b ./tsconfig.types.json && tsc-alias -p ./tsconfig.types.json",
-		"build:clean": "rm -r ./dist",
+		"build:clean": "rimraf ./dist",
 		"build": "npm run build:clean && npm run compile && node ./scripts/prepare-package-json",
 		"format": "prettier --config .prettierrc.json --write .",
 		"release": "npm run build && npm run publish"
@@ -46,6 +46,7 @@
 		"jest-environment-node": "^29.6.1",
 		"prettier": "^2.8.8",
 		"qrcode-terminal": "^0.12.0",
+		"rimraf": "^5.0.1",
 		"ts-jest": "^29.1.1",
 		"tsc-alias": "^1.8.7",
 		"typescript": "^5.1.6"
