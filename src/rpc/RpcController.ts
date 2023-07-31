@@ -101,7 +101,7 @@ export default class NanoRPC {
 					LOG_REQUEST_RESPONSE
 						? `\n\t- Request: ${JSON.stringify(
 								data,
-						  )}\n\t- Response: ${await responseClone.clone().text()}`
+						  )}\n\t- Response: ${await responseClone.text()}`
 						: '',
 				);
 				throw new Error('bad json in response');
