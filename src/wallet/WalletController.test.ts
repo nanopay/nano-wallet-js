@@ -102,13 +102,13 @@ describe('Init Wallet', () => {
 				{ small: true },
 			);
 			console.info(`Send 0.0001 to ${masterWallet.account}`);
-			for (let count = 1; masterWallet.state.receivable === '0'; count++) {
+			for (let count = 1; masterWallet.receivable === '0'; count++) {
 				process.stdout.write('.'.padEnd(count, '.'));
 				await masterWallet.getReceivable();
 				await new Promise(res => setTimeout(res, 2000));
 			}
-			console.log('receivable', masterWallet.state.receivable);
-			for (const block of masterWallet.state.receivableBlocks) {
+			console.log('receivable', masterWallet.receivable);
+			for (const block of masterWallet.receivableBlocks) {
 				await masterWallet.receive(block.blockHash);
 			}
 		}
@@ -149,14 +149,14 @@ describe('Init Wallet', () => {
 			receivable = response.receivable;
 			await new Promise(res => setTimeout(res, 1000));
 		}
-		expect(ephemeralWallet.state.receivableBlocks.length).toBeGreaterThan(0);
+		expect(ephemeralWallet.receivableBlocks.length).toBeGreaterThan(0);
 	}, 60000);
 
 	it('should receive', async () => {
-		const receivablesCount = ephemeralWallet.state.receivableBlocks.length;
+		const receivablesCount = ephemeralWallet.receivableBlocks.length;
 		expect(receivablesCount).toBeGreaterThanOrEqual(1);
 		const lastReceivable =
-			ephemeralWallet.state.receivableBlocks[receivablesCount - 1];
+			ephemeralWallet.receivableBlocks[receivablesCount - 1];
 		await ephemeralWallet.receive(lastReceivable.blockHash);
 	}, 60000);
 
@@ -165,6 +165,6 @@ describe('Init Wallet', () => {
 		const { hash } = await ephemeralWallet.setRepresentative(representative);
 		expect(checkHash(hash)).toBeTruthy();
 		expect(ephemeralWallet.config.representative).toBe(representative);
-		expect(ephemeralWallet.state.representative).toBe(representative);
+		expect(ephemeralWallet.currentRepresentative).toBe(representative);
 	}, 60000);
 });
