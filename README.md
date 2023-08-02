@@ -4,12 +4,13 @@ SDK for developers to create and interact with Nanocurrency wallets easily with 
 
 ## Why to use it ?
 
-- Easy to use, no need to configure RPC calls
-- Allows you to configure multiple RPC and Work Servers separately.
-- Automatic fallback when a request fails
+- It's easy to use, no complicated setup needed for RPC communication with Nano nodes
+- You can configure multiple nodes for RPC and Work Servers separately.
+- Automatic fallback to next node when a RPC request fails
 - Runtime agnostic: Compatible with Node.js, Browser, EDGE, Bun, Deno and others.
-- Efficient and agnostic state management allows you to store the wallet state with your favorite tool and start the instance with the previous state.
-- Safe and non-custodial: Your privateKey is never shared with RPC or any server, all signatures and key derivation is made on client side by [nanocurrency.js library](https://github.com/marvinroger/nanocurrency-js)
+- Storage agnostic: You can persist the wallet state changes with your favorite storage like SQLite, a remote DB, Redux and etc. 
+- Efficient state management: After inited, the state can be accessed in-memory, no need to make unecessary requests and writes everytime.
+- Safe and non-custodial: Your privateKey is never shared with the nodes or any server, all signatures and key derivation is made on client side by [nanocurrency.js library](https://github.com/marvinroger/nanocurrency-js)
 
 ## How to use it
 
