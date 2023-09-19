@@ -27,12 +27,20 @@ export interface ReceivableBlock {
 	amount: string;
 }
 
+interface Work {
+	[hash: string]: {
+		threshold: string;
+		work: string;
+	};
+}
+
 export interface NanoWalletState {
 	balance: string;
 	receivable: string;
 	receivableBlocks: ReceivableBlock[];
 	frontier: string | null;
 	representative: string | null;
+	works: Work;
 }
 
 export default class NanoWallet extends BaseController<
@@ -61,6 +69,7 @@ export default class NanoWallet extends BaseController<
 		receivableBlocks: [],
 		frontier: null,
 		representative: null,
+		works: {},
 	};
 
 	constructor(config: NanoWalletConfig, state?: NanoWalletState | null) {
@@ -88,7 +97,7 @@ export default class NanoWallet extends BaseController<
 		await this.getReceivable();
 	}
 
-	async workGenerate(hash: string, threshold: string) {
+	private async workGenerate(hash: string, threshold: string) {
 		const { work } = await this.rpc.workGenerate(hash, threshold);
 
 		if (!work) {
@@ -105,6 +114,29 @@ export default class NanoWallet extends BaseController<
 			throw new Error('Invalid work');
 		}
 
+		return work;
+	}
+
+	async getWork(hash: string, threshold: string) {
+		if (
+			hash in this.state.works &&
+			parseInt(this.state.works[hash].threshold, 16) >= parseInt(threshold, 16)
+		) {
+			return this.state.works[hash].work;
+		}
+		const work = await this.workGenerate(hash, threshold);
+
+		// TODO: Store the generated threshold, instead the requested one
+
+		await this.update({
+			works: {
+				...this.state.works,
+				[hash]: {
+					threshold,
+					work,
+				},
+			},
+		});
 		return work;
 	}
 
@@ -150,7 +182,7 @@ export default class NanoWallet extends BaseController<
 
 		const frontier = this.state.frontier || this.publicKey;
 
-		const work = await this.workGenerate(frontier, RECEIVE_DIFFICULTY);
+		const work = await this.getWork(frontier, RECEIVE_DIFFICULTY);
 
 		const processed = await this.rpc.process({
 			...block,
@@ -193,7 +225,7 @@ export default class NanoWallet extends BaseController<
 			work: null,
 		});
 
-		const work = await this.workGenerate(this.state.frontier, SEND_DIFFICULTY);
+		const work = await this.getWork(this.state.frontier, SEND_DIFFICULTY);
 
 		const processed = await this.rpc.process({
 			...block,
@@ -225,7 +257,7 @@ export default class NanoWallet extends BaseController<
 			work: null,
 		});
 
-		const work = await this.workGenerate(this.state.frontier, SEND_DIFFICULTY);
+		const work = await this.getWork(this.state.frontier, SEND_DIFFICULTY);
 
 		const processed = await this.rpc.process({
 			...block,
@@ -259,7 +291,7 @@ export default class NanoWallet extends BaseController<
 			work: null,
 		});
 
-		const work = await this.workGenerate(this.state.frontier, SEND_DIFFICULTY);
+		const work = await this.getWork(this.state.frontier, SEND_DIFFICULTY);
 
 		const processed = await this.rpc.process({
 			...block,
