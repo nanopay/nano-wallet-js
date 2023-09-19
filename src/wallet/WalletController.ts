@@ -15,6 +15,7 @@ import {
 } from '@/Constants';
 import BaseController from '@/BaseController';
 import { TunedBigNumber } from '@/utils';
+import Logger from '@/logger/Logger';
 
 export interface NanoWalletConfig extends NanoRpcConfig {
 	privateKey: string;
@@ -62,6 +63,7 @@ export default class NanoWallet extends BaseController<
 			to: Unit.raw,
 		}),
 		timeout: DEFAULT_TIMEOUT,
+		debug: false,
 	} as any as NanoWalletConfig;
 
 	defaultState: NanoWalletState = {
@@ -73,16 +75,21 @@ export default class NanoWallet extends BaseController<
 		work: null,
 	};
 
+	logger: Logger;
+
 	constructor(config: NanoWalletConfig, state?: NanoWalletState | null) {
 		super(config, state || undefined);
 		this.publicKey = derivePublicKey(config.privateKey);
 		this.account = deriveAddress(this.publicKey, { useNanoPrefix: true });
-		this.rpc = new NanoRPC({
-			rpcUrls: config.rpcUrls,
-			workerUrls: config.workerUrls,
-			timeout: config.timeout,
-		});
+		this.logger = new Logger('NANO_WALLET', config.debug);
+		this.logger.info(`Imported account: ${this.account}`);
 		this.initialize();
+		this.rpc = new NanoRPC({
+			rpcUrls: this.config.rpcUrls,
+			workerUrls: this.config.workerUrls,
+			timeout: this.config.timeout,
+			debug: this.config.debug,
+		});
 		if (this.config.precomputeWork) {
 			this.subscribe(state => {
 				if (state.work && state.work.hash !== state.frontier) {
@@ -92,6 +99,7 @@ export default class NanoWallet extends BaseController<
 					state.frontier &&
 					(!state.work || state.work.hash !== state.frontier)
 				) {
+					this.logger.info('Precomputing Work for', state.frontier);
 					this.getWork(state.frontier, SEND_DIFFICULTY);
 				}
 			});
@@ -102,6 +110,15 @@ export default class NanoWallet extends BaseController<
 		try {
 			const { balance, frontier, receivable, representative } =
 				await this.rpc.accountInfo(this.account);
+			this.logger.info(
+				`Wallet Sync! Balance: ${convert(balance, {
+					from: Unit.raw,
+					to: Unit.NANO,
+				})} NANO. Receivable: ${convert(receivable, {
+					from: Unit.raw,
+					to: Unit.NANO,
+				})}`,
+			);
 			this.update({ balance, frontier, receivable, representative });
 		} catch (error: any) {
 			if (error.message !== 'Account not found') {
@@ -112,6 +129,8 @@ export default class NanoWallet extends BaseController<
 	}
 
 	private async workGenerate(hash: string, threshold: string) {
+		const startedAt = Date.now();
+
 		const { work } = await this.rpc.workGenerate(hash, threshold);
 
 		if (!work) {
@@ -128,6 +147,10 @@ export default class NanoWallet extends BaseController<
 			throw new Error('Invalid work');
 		}
 
+		this.logger.info(
+			`Generated Work for ${hash} in ${Date.now() - startedAt} ms`,
+		);
+
 		return work;
 	}
 
@@ -136,6 +159,7 @@ export default class NanoWallet extends BaseController<
 			this.state.work?.hash === hash &&
 			parseInt(this.state.work.threshold, 16) >= parseInt(threshold, 16)
 		) {
+			this.logger.info(`Using precomputed Work for ${hash}`);
 			return this.state.work.work;
 		}
 		const work = await this.workGenerate(hash, threshold);
@@ -167,6 +191,12 @@ export default class NanoWallet extends BaseController<
 				.plus(blocks[blockHash])
 				.toString();
 		}
+		this.logger.info(
+			`${convert(receivable, {
+				from: Unit.raw,
+				to: Unit.NANO,
+			})} NANO to receive from ${receivableBlocks.length} blocks`,
+		);
 		this.update({ receivableBlocks, receivable });
 		return { receivableBlocks, receivable };
 	}
@@ -183,6 +213,13 @@ export default class NanoWallet extends BaseController<
 		}
 
 		const balance = TunedBigNumber(this.state.balance).plus(amount).toString();
+
+		this.logger.info(
+			`Receiving ${convert(amount, {
+				from: Unit.raw,
+				to: Unit.NANO,
+			})} NANO from block ${link}`,
+		);
 
 		const { block, hash } = createBlock(this.config.privateKey, {
 			previous: this.state.frontier,
@@ -229,6 +266,13 @@ export default class NanoWallet extends BaseController<
 
 		const balance = TunedBigNumber(this.state.balance).minus(amount).toString();
 
+		this.logger.info(
+			`Sending ${convert(amount, {
+				from: Unit.raw,
+				to: Unit.NANO,
+			})} NANO to ${to}`,
+		);
+
 		const { block, hash } = createBlock(this.config.privateKey, {
 			previous: this.state.frontier,
 			representative: this.config.representative,
@@ -261,6 +305,8 @@ export default class NanoWallet extends BaseController<
 			throw new Error('No frontier');
 		}
 
+		this.logger.info(`Sweeping all funds from ${this.account} to ${to}`);
+
 		const { block, hash } = createBlock(this.config.privateKey, {
 			previous: this.state.frontier,
 			representative: this.config.representative,
@@ -292,6 +338,8 @@ export default class NanoWallet extends BaseController<
 		if (this.state.frontier === null) {
 			throw new Error('No frontier');
 		}
+
+		this.logger.info(`Setting representative: ${account}`);
 
 		const representative = account || this.config.representative;
 
