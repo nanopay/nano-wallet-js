@@ -90,6 +90,7 @@ export default class NanoWallet extends BaseController<
 			timeout: this.config.timeout,
 			debug: this.config.debug,
 		});
+		let previousFrontier = this.state.frontier;
 		if (this.config.precomputeWork) {
 			this.subscribe(state => {
 				if (state.work && state.work.hash !== state.frontier) {
@@ -97,11 +98,13 @@ export default class NanoWallet extends BaseController<
 				}
 				if (
 					state.frontier &&
+					state.frontier !== previousFrontier &&
 					(!state.work || state.work.hash !== state.frontier)
 				) {
 					this.logger.info('Precomputing Work for', state.frontier);
 					this.getWork(state.frontier, SEND_DIFFICULTY);
 				}
+				previousFrontier = state.frontier;
 			});
 		}
 	}
