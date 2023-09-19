@@ -20,6 +20,7 @@ export interface NanoWalletConfig extends NanoRpcConfig {
 	privateKey: string;
 	representative: string;
 	minAmountRaw?: string;
+	precomputeWork?: boolean;
 }
 
 export interface ReceivableBlock {
@@ -56,6 +57,7 @@ export default class NanoWallet extends BaseController<
 		workerUrls: [],
 		privateKey: null,
 		representative: '',
+		precomputeWork: true,
 		minAmountRaw: convert(MIN_AMOUNT.toString(), {
 			from: Unit.NANO,
 			to: Unit.raw,
@@ -82,6 +84,13 @@ export default class NanoWallet extends BaseController<
 			timeout: config.timeout,
 		});
 		this.initialize();
+		if (this.config.precomputeWork) {
+			this.subscribe(state => {
+				if (state.frontier && !(state.frontier in this.state.works)) {
+					this.getWork(state.frontier, SEND_DIFFICULTY);
+				}
+			});
+		}
 	}
 
 	async sync() {
