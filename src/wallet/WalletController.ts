@@ -29,10 +29,9 @@ export interface ReceivableBlock {
 }
 
 interface Work {
-	[hash: string]: {
-		threshold: string;
-		work: string;
-	};
+	hash: string;
+	threshold: string;
+	work: string;
 }
 
 export interface NanoWalletState {
@@ -41,7 +40,7 @@ export interface NanoWalletState {
 	receivableBlocks: ReceivableBlock[];
 	frontier: string | null;
 	representative: string | null;
-	works: Work;
+	work: Work | null;
 }
 
 export default class NanoWallet extends BaseController<
@@ -71,7 +70,7 @@ export default class NanoWallet extends BaseController<
 		receivableBlocks: [],
 		frontier: null,
 		representative: null,
-		works: {},
+		work: null,
 	};
 
 	constructor(config: NanoWalletConfig, state?: NanoWalletState | null) {
@@ -86,7 +85,13 @@ export default class NanoWallet extends BaseController<
 		this.initialize();
 		if (this.config.precomputeWork) {
 			this.subscribe(state => {
-				if (state.frontier && !(state.frontier in this.state.works)) {
+				if (state.work && state.work.hash !== state.frontier) {
+					this.update({ work: null });
+				}
+				if (
+					state.frontier &&
+					(!state.work || state.work.hash !== state.frontier)
+				) {
 					this.getWork(state.frontier, SEND_DIFFICULTY);
 				}
 			});
@@ -126,24 +131,22 @@ export default class NanoWallet extends BaseController<
 		return work;
 	}
 
-	async getWork(hash: string, threshold: string) {
+	private async getWork(hash: string, threshold: string) {
 		if (
-			hash in this.state.works &&
-			parseInt(this.state.works[hash].threshold, 16) >= parseInt(threshold, 16)
+			this.state.work?.hash === hash &&
+			parseInt(this.state.work.threshold, 16) >= parseInt(threshold, 16)
 		) {
-			return this.state.works[hash].work;
+			return this.state.work.work;
 		}
 		const work = await this.workGenerate(hash, threshold);
 
 		// TODO: Store the generated threshold, instead the requested one
 
 		this.update({
-			works: {
-				...this.state.works,
-				[hash]: {
-					threshold,
-					work,
-				},
+			work: {
+				hash,
+				threshold,
+				work,
 			},
 		});
 		return work;
