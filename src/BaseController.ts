@@ -3,7 +3,7 @@
 /**
  * State change callbacks
  */
-export type Listener<T> = (state: T, resetting?: boolean) => Promise<void>;
+export type Listener<T> = (state: T, resetting?: boolean) => void;
 
 /**
  * @type BaseConfig
@@ -126,12 +126,11 @@ export default class BaseController<C extends BaseConfig, S extends BaseState> {
 	/**
 	 * Notifies all subscribed listeners of current modified state.
 	 */
-	async notify(state: S, resetting = false) {
+	notify(state: S, resetting = false) {
 		const promises: Promise<void>[] = [];
 		this.internalListeners.forEach(listener => {
-			promises.push(listener(state, resetting));
+			listener(state, resetting);
 		});
-		await Promise.all(promises);
 	}
 
 	/**
@@ -165,7 +164,7 @@ export default class BaseController<C extends BaseConfig, S extends BaseState> {
 		this.internalState = overwrite
 			? Object.assign({}, state as S)
 			: Object.assign({}, this.internalState, state);
-		await this.notify(this.internalState, resetting);
+		this.notify(this.internalState, resetting);
 	}
 
 	/**

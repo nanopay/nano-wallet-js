@@ -88,7 +88,7 @@ export default class NanoWallet extends BaseController<
 		try {
 			const { balance, frontier, receivable, representative } =
 				await this.rpc.accountInfo(this.account);
-			await this.update({ balance, frontier, receivable, representative });
+			this.update({ balance, frontier, receivable, representative });
 		} catch (error: any) {
 			if (error.message !== 'Account not found') {
 				throw error;
@@ -128,7 +128,7 @@ export default class NanoWallet extends BaseController<
 
 		// TODO: Store the generated threshold, instead the requested one
 
-		await this.update({
+		this.update({
 			works: {
 				...this.state.works,
 				[hash]: {
@@ -155,7 +155,7 @@ export default class NanoWallet extends BaseController<
 				.plus(blocks[blockHash])
 				.toString();
 		}
-		await this.update({ receivableBlocks, receivable });
+		this.update({ receivableBlocks, receivable });
 		return { receivableBlocks, receivable };
 	}
 
@@ -200,7 +200,7 @@ export default class NanoWallet extends BaseController<
 			.minus(amount)
 			.toString();
 
-		await this.update({
+		this.update({
 			balance,
 			frontier: hash,
 			receivableBlocks,
@@ -236,7 +236,7 @@ export default class NanoWallet extends BaseController<
 			throw new Error('Block hash mismatch');
 		}
 
-		await this.update({
+		this.update({
 			balance,
 			frontier: hash,
 		});
@@ -268,7 +268,7 @@ export default class NanoWallet extends BaseController<
 			throw new Error('Block hash mismatch');
 		}
 
-		await this.update({
+		this.update({
 			balance: '0',
 			frontier: hash,
 		});
@@ -302,7 +302,7 @@ export default class NanoWallet extends BaseController<
 			throw new Error('Block hash mismatch');
 		}
 
-		await this.update({
+		this.update({
 			balance: '0',
 			frontier: hash,
 			representative,
