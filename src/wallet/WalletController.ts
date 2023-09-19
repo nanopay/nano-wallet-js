@@ -123,38 +123,50 @@ export default class NanoWallet extends BaseController<
 				})}`,
 			);
 			this.update({ balance, frontier, receivable, representative });
+			await this.getReceivable();
 		} catch (error: any) {
 			if (error.message !== 'Account not found') {
+				this.logger.error(
+					'sync:',
+					error instanceof Error ? error.message : error,
+				);
 				throw error;
 			}
 		}
-		await this.getReceivable();
 	}
 
 	private async workGenerate(hash: string, threshold: string) {
-		const startedAt = Date.now();
+		try {
+			const startedAt = Date.now();
 
-		const { work } = await this.rpc.workGenerate(hash, threshold);
+			const { work } = await this.rpc.workGenerate(hash, threshold);
 
-		if (!work) {
-			throw new Error('No work');
+			if (!work) {
+				throw new Error('No work');
+			}
+
+			const isValidWork = validateWork({
+				work,
+				blockHash: hash,
+				threshold,
+			});
+
+			if (!isValidWork) {
+				throw new Error('Invalid work');
+			}
+
+			this.logger.info(
+				`Generated Work for ${hash} in ${Date.now() - startedAt} ms`,
+			);
+
+			return work;
+		} catch (error) {
+			this.logger.error(
+				'workGenerate:',
+				error instanceof Error ? error.message : error,
+			);
+			throw error;
 		}
-
-		const isValidWork = validateWork({
-			work,
-			blockHash: hash,
-			threshold,
-		});
-
-		if (!isValidWork) {
-			throw new Error('Invalid work');
-		}
-
-		this.logger.info(
-			`Generated Work for ${hash} in ${Date.now() - startedAt} ms`,
-		);
-
-		return work;
 	}
 
 	private async getWork(hash: string, threshold: string) {
@@ -180,202 +192,246 @@ export default class NanoWallet extends BaseController<
 	}
 
 	async getReceivable() {
-		const { blocks = {} } = await this.rpc.receivable(this.account, {
-			threshold: this.config.minAmountRaw,
-		});
-		let receivableBlocks: ReceivableBlock[] = [];
-		let receivable = '0';
-		for (const blockHash in blocks) {
-			receivableBlocks.push({
-				blockHash,
-				amount: blocks[blockHash],
+		try {
+			const { blocks = {} } = await this.rpc.receivable(this.account, {
+				threshold: this.config.minAmountRaw,
 			});
-			receivable = TunedBigNumber(receivable)
-				.plus(blocks[blockHash])
-				.toString();
+			let receivableBlocks: ReceivableBlock[] = [];
+			let receivable = '0';
+			for (const blockHash in blocks) {
+				receivableBlocks.push({
+					blockHash,
+					amount: blocks[blockHash],
+				});
+				receivable = TunedBigNumber(receivable)
+					.plus(blocks[blockHash])
+					.toString();
+			}
+			this.logger.info(
+				`${convert(receivable, {
+					from: Unit.raw,
+					to: Unit.NANO,
+				})} NANO to receive from ${receivableBlocks.length} blocks`,
+			);
+			this.update({ receivableBlocks, receivable });
+			return { receivableBlocks, receivable };
+		} catch (error) {
+			this.logger.error(
+				'getReceivable',
+				error instanceof Error ? error.message : error,
+			);
+			throw error;
 		}
-		this.logger.info(
-			`${convert(receivable, {
-				from: Unit.raw,
-				to: Unit.NANO,
-			})} NANO to receive from ${receivableBlocks.length} blocks`,
-		);
-		this.update({ receivableBlocks, receivable });
-		return { receivableBlocks, receivable };
 	}
 
 	async receive(link: string) {
-		link = link.toUpperCase();
+		try {
+			link = link.toUpperCase();
 
-		const amount = this.state.receivableBlocks.find(
-			({ blockHash }) => blockHash === link,
-		)?.amount;
+			const amount = this.state.receivableBlocks.find(
+				({ blockHash }) => blockHash === link,
+			)?.amount;
 
-		if (!amount) {
-			throw new Error('No receivable block');
+			if (!amount) {
+				throw new Error('No receivable block');
+			}
+
+			const balance = TunedBigNumber(this.state.balance)
+				.plus(amount)
+				.toString();
+
+			this.logger.info(
+				`Receiving ${convert(amount, {
+					from: Unit.raw,
+					to: Unit.NANO,
+				})} NANO from block ${link}`,
+			);
+
+			const { block, hash } = createBlock(this.config.privateKey, {
+				previous: this.state.frontier,
+				representative: this.config.representative,
+				balance,
+				link,
+				work: null,
+			});
+
+			const frontier = this.state.frontier || this.publicKey;
+
+			const work = await this.getWork(frontier, RECEIVE_DIFFICULTY);
+
+			const processed = await this.rpc.process({
+				...block,
+				work,
+			});
+
+			if (processed.hash !== hash) {
+				throw new Error('Block hash mismatch');
+			}
+
+			const receivableBlocks = this.state.receivableBlocks.filter(
+				({ blockHash }) => blockHash !== link,
+			);
+			const receivable = TunedBigNumber(this.state.receivable)
+				.minus(amount)
+				.toString();
+
+			this.update({
+				balance,
+				frontier: hash,
+				receivableBlocks,
+				receivable,
+			});
+
+			return { hash };
+		} catch (error) {
+			this.logger.error(
+				'receive:',
+				error instanceof Error ? error.message : error,
+			);
+			throw error;
 		}
-
-		const balance = TunedBigNumber(this.state.balance).plus(amount).toString();
-
-		this.logger.info(
-			`Receiving ${convert(amount, {
-				from: Unit.raw,
-				to: Unit.NANO,
-			})} NANO from block ${link}`,
-		);
-
-		const { block, hash } = createBlock(this.config.privateKey, {
-			previous: this.state.frontier,
-			representative: this.config.representative,
-			balance,
-			link,
-			work: null,
-		});
-
-		const frontier = this.state.frontier || this.publicKey;
-
-		const work = await this.getWork(frontier, RECEIVE_DIFFICULTY);
-
-		const processed = await this.rpc.process({
-			...block,
-			work,
-		});
-
-		if (processed.hash !== hash) {
-			throw new Error('Block hash mismatch');
-		}
-
-		const receivableBlocks = this.state.receivableBlocks.filter(
-			({ blockHash }) => blockHash !== link,
-		);
-		const receivable = TunedBigNumber(this.state.receivable)
-			.minus(amount)
-			.toString();
-
-		this.update({
-			balance,
-			frontier: hash,
-			receivableBlocks,
-			receivable,
-		});
-
-		return { hash };
 	}
 
 	async send(to: string, amount: string) {
-		if (this.state.frontier === null) {
-			throw new Error('No frontier');
+		try {
+			if (this.state.frontier === null) {
+				throw new Error('No frontier');
+			}
+
+			const balance = TunedBigNumber(this.state.balance)
+				.minus(amount)
+				.toString();
+
+			this.logger.info(
+				`Sending ${convert(amount, {
+					from: Unit.raw,
+					to: Unit.NANO,
+				})} NANO to ${to}`,
+			);
+
+			const { block, hash } = createBlock(this.config.privateKey, {
+				previous: this.state.frontier,
+				representative: this.config.representative,
+				balance,
+				link: to,
+				work: null,
+			});
+
+			const work = await this.getWork(this.state.frontier, SEND_DIFFICULTY);
+
+			const processed = await this.rpc.process({
+				...block,
+				work,
+			});
+
+			if (processed.hash !== hash) {
+				throw new Error('Block hash mismatch');
+			}
+
+			this.update({
+				balance,
+				frontier: hash,
+			});
+
+			return { hash };
+		} catch (error) {
+			this.logger.error(
+				'send:',
+				error instanceof Error ? error.message : error,
+			);
+			throw error;
 		}
-
-		const balance = TunedBigNumber(this.state.balance).minus(amount).toString();
-
-		this.logger.info(
-			`Sending ${convert(amount, {
-				from: Unit.raw,
-				to: Unit.NANO,
-			})} NANO to ${to}`,
-		);
-
-		const { block, hash } = createBlock(this.config.privateKey, {
-			previous: this.state.frontier,
-			representative: this.config.representative,
-			balance,
-			link: to,
-			work: null,
-		});
-
-		const work = await this.getWork(this.state.frontier, SEND_DIFFICULTY);
-
-		const processed = await this.rpc.process({
-			...block,
-			work,
-		});
-
-		if (processed.hash !== hash) {
-			throw new Error('Block hash mismatch');
-		}
-
-		this.update({
-			balance,
-			frontier: hash,
-		});
-
-		return { hash };
 	}
 
 	async sweep(to: string) {
-		if (this.state.frontier === null) {
-			throw new Error('No frontier');
+		try {
+			if (this.state.frontier === null) {
+				throw new Error('No frontier');
+			}
+
+			this.logger.info(`Sweeping all funds from ${this.account} to ${to}`);
+
+			const { block, hash } = createBlock(this.config.privateKey, {
+				previous: this.state.frontier,
+				representative: this.config.representative,
+				balance: '0',
+				link: to,
+				work: null,
+			});
+
+			const work = await this.getWork(this.state.frontier, SEND_DIFFICULTY);
+
+			const processed = await this.rpc.process({
+				...block,
+				work,
+			});
+
+			if (processed.hash !== hash) {
+				throw new Error('Block hash mismatch');
+			}
+
+			this.update({
+				balance: '0',
+				frontier: hash,
+			});
+
+			return { hash };
+		} catch (error) {
+			this.logger.error(
+				'sweep:',
+				error instanceof Error ? error.message : error,
+			);
+			throw error;
 		}
-
-		this.logger.info(`Sweeping all funds from ${this.account} to ${to}`);
-
-		const { block, hash } = createBlock(this.config.privateKey, {
-			previous: this.state.frontier,
-			representative: this.config.representative,
-			balance: '0',
-			link: to,
-			work: null,
-		});
-
-		const work = await this.getWork(this.state.frontier, SEND_DIFFICULTY);
-
-		const processed = await this.rpc.process({
-			...block,
-			work,
-		});
-
-		if (processed.hash !== hash) {
-			throw new Error('Block hash mismatch');
-		}
-
-		this.update({
-			balance: '0',
-			frontier: hash,
-		});
-
-		return { hash };
 	}
 
 	async setRepresentative(account?: string) {
-		if (this.state.frontier === null) {
-			throw new Error('No frontier');
+		try {
+			if (this.state.frontier === null) {
+				throw new Error('No frontier');
+			}
+
+			this.logger.info(`Setting representative: ${account}`);
+
+			const representative = account || this.config.representative;
+
+			const { block, hash } = createBlock(this.config.privateKey, {
+				previous: this.state.frontier,
+				representative,
+				balance: this.state.balance,
+				link: null,
+				work: null,
+			});
+
+			const work = await this.getWork(this.state.frontier, SEND_DIFFICULTY);
+
+			const processed = await this.rpc.process({
+				...block,
+				work,
+			});
+
+			if (processed.hash !== hash) {
+				throw new Error('Block hash mismatch');
+			}
+
+			this.update({
+				balance: '0',
+				frontier: hash,
+				representative,
+			});
+
+			this.configure({
+				representative,
+			});
+
+			return { hash };
+		} catch (error) {
+			this.logger.error(
+				'setRepresentative:',
+				error instanceof Error ? error.message : error,
+			);
+			throw error;
 		}
-
-		this.logger.info(`Setting representative: ${account}`);
-
-		const representative = account || this.config.representative;
-
-		const { block, hash } = createBlock(this.config.privateKey, {
-			previous: this.state.frontier,
-			representative,
-			balance: this.state.balance,
-			link: null,
-			work: null,
-		});
-
-		const work = await this.getWork(this.state.frontier, SEND_DIFFICULTY);
-
-		const processed = await this.rpc.process({
-			...block,
-			work,
-		});
-
-		if (processed.hash !== hash) {
-			throw new Error('Block hash mismatch');
-		}
-
-		this.update({
-			balance: '0',
-			frontier: hash,
-			representative,
-		});
-
-		this.configure({
-			representative,
-		});
-
-		return { hash };
 	}
 
 	get balance() {
