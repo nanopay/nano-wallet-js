@@ -16,6 +16,7 @@ import {
 import BaseController from '@/BaseController';
 import { TunedBigNumber } from '@/utils';
 import Logger from '@/logger/Logger';
+import Locker from './Locker';
 
 export interface NanoWalletConfig extends NanoRpcConfig {
 	privateKey: string;
@@ -76,6 +77,8 @@ export default class NanoWallet extends BaseController<
 	};
 
 	logger: Logger;
+
+	locker = new Locker();
 
 	constructor(config: NanoWalletConfig, state?: NanoWalletState | null) {
 		super(config, state || undefined);
@@ -225,6 +228,7 @@ export default class NanoWallet extends BaseController<
 	}
 
 	async receive(link: string) {
+		await this.locker.acquire();
 		try {
 			link = link.toUpperCase();
 
@@ -289,10 +293,13 @@ export default class NanoWallet extends BaseController<
 				error instanceof Error ? error.message : error,
 			);
 			throw error;
+		} finally {
+			await this.locker.release();
 		}
 	}
 
 	async send(to: string, amount: string) {
+		await this.locker.acquire();
 		try {
 			if (this.state.frontier === null) {
 				throw new Error('No frontier');
@@ -340,10 +347,13 @@ export default class NanoWallet extends BaseController<
 				error instanceof Error ? error.message : error,
 			);
 			throw error;
+		} finally {
+			this.locker.release();
 		}
 	}
 
 	async sweep(to: string) {
+		await this.locker.acquire();
 		try {
 			if (this.state.frontier === null) {
 				throw new Error('No frontier');
@@ -382,10 +392,13 @@ export default class NanoWallet extends BaseController<
 				error instanceof Error ? error.message : error,
 			);
 			throw error;
+		} finally {
+			this.locker.release();
 		}
 	}
 
 	async setRepresentative(account?: string) {
+		await this.locker.acquire();
 		try {
 			if (this.state.frontier === null) {
 				throw new Error('No frontier');
@@ -431,6 +444,8 @@ export default class NanoWallet extends BaseController<
 				error instanceof Error ? error.message : error,
 			);
 			throw error;
+		} finally {
+			this.locker.release();
 		}
 	}
 
