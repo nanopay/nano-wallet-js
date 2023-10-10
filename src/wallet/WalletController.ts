@@ -126,7 +126,6 @@ export default class NanoWallet extends BaseController<
 				})}`,
 			);
 			this.update({ balance, frontier, receivable, representative });
-			await this.getReceivable();
 		} catch (error: any) {
 			if (error.message !== 'Account not found') {
 				this.logger.error(
@@ -136,6 +135,7 @@ export default class NanoWallet extends BaseController<
 				throw error;
 			}
 		}
+		await this.getReceivable();
 	}
 
 	private async workGenerate(hash: string, threshold: string) {

@@ -1,6 +1,6 @@
 {
 	"name": "nano-wallet-js",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "SDK for developers to create and interact with Nanocurrency wallet easily",
 	"keywords": [
 		"nanocurrency",
